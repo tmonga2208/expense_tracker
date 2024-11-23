@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect('mongodb+srv://tmonga2208:tarun2208@cluster0.rv2xff8.mongodb.net/loginDB', {
+mongoose.connect(<your_MongoDB_URL>, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   serverSelectionTimeoutMS: 30000,
