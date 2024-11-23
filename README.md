@@ -63,7 +63,8 @@ Technologies Used
 Frontend: React (with Vite)
 Backend: Node.js, Express.js
 Database: MongoDB
-Contributing
+
+## Contributing
 Contributions are welcome! If you'd like to contribute:
 
 Fork the repository.
