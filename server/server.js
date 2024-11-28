@@ -6,6 +6,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import Form from '../src/models/Form.js';
 import BillForm from '../src/models/BillForm.js';
+import UserInfo from '../src/models/user.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -136,12 +137,12 @@ app.get('/form-data', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/bill-form-data', authenticateToken, async (req, res) => {
+app.get('/bill-formdata', authenticateToken, async (req, res) => {
   try {
     const forms = await BillForm.find({ userId: req.user.id });
     res.status(200).json(forms);
   } catch (error) {
-    res.status(400).json({ message: 'Error fetching form data' });
+    res.status(400).json({ message: 'Error fetching bill data' });
   }
 });
 

@@ -18,6 +18,7 @@ export default function UserProfile() {
     password: '********'
   };
 
+
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem('userDetails');
     return storedUser ? JSON.parse(storedUser) : defaultUser;
@@ -29,17 +30,40 @@ export default function UserProfile() {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-  const handleSaveChanges = () => {
+
+  const handleSaveChanges = async () => {
     console.log('Saving changes:', user);
-    localStorage.setItem('userDetails', JSON.stringify(user));
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('No token found. Please log in.');
+      return;
+    }
+
+    const response = await fetch('http://localhost:5000/update-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(user),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      alert(data.message);
+      localStorage.setItem('userDetails', JSON.stringify(user));
+    } else {
+      const errorData = await response.json();
+      alert(errorData.message);
+    }
   };
 
   return (
     <AdminPanelLayout>
       <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+        <CardHeader className="flex flex-col items-center space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
           <Avatar className="w-24 h-24">
-            <AvatarImage src="/placeholder.svg?height=96&width=96" alt={user.username} />
+            <AvatarImage src="/placeholder.svg?height=48&width=48" alt={user.username} />
             <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="text-center sm:text-left">
@@ -47,8 +71,8 @@ export default function UserProfile() {
             <p className="text-sm text-muted-foreground">@{othername}</p>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
             <h3 className="text-lg font-semibold">Personal Information</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -74,7 +98,7 @@ export default function UserProfile() {
             </div>
           </div>
           <Separator />
-          <div className="space-y-4">
+          <div className="space-y-2">
             <h3 className="text-lg font-semibold">Account Settings</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

@@ -12,7 +12,7 @@ function FriendsPage() {
   ];
   const [filteredFriends, setFilteredFriends] = useState(friends);
   const [search, setSearch] = useState("");
-    const [showResults, setShowResults] = useState(false); // State for visibility
+    const [showResults, setShowResults] = useState(false); 
     
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
@@ -20,7 +20,7 @@ function FriendsPage() {
   };
 
   const handleSearchClick = () => {
-    setShowResults(true); // Show results on search click
+    setShowResults(true); 
   };
 
   const navigate = useNavigate();

@@ -8,14 +8,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import React from 'react';
+import Cards from 'react-credit-cards-2';
+import 'react-credit-cards-2/dist/es/styles-compiled.css';
+import { Input } from "./ui/input"
 
 export function DialogPrompt3() {
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardholderName, setCardholderName] = useState("");
-  const [expirationDate, setExpirationDate] = useState("");
-  const [cvv, setCvv] = useState("");
+  const [state, setState] = useState({
+    number: '',
+    expiry: '',
+    cvc: '',
+    name: '',
+    focus: '',
+  });
+
+  const handleInputChange = (evt) => {
+    const { name, value } = evt.target;
+    
+    setState((prev) => ({ ...prev, [name]: value }));
+  }
+
+  const handleInputFocus = (evt) => {
+    setState((prev) => ({ ...prev, focus: evt.target.name }));
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,51 +70,53 @@ export function DialogPrompt3() {
           <DialogTitle>Add Card Details</DialogTitle>
           <DialogDescription>Enter your card details below</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div>
-            <Label htmlFor="cardNumber">Card Number</Label>
-            <Input
-              type="text"
-              id="cardNumber"
-              placeholder="Card Number"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="cardholderName">Cardholder Name</Label>
-            <Input
-              type="text"
-              id="cardholderName"
-              placeholder="Cardholder Name"
-              value={cardholderName}
-              onChange={(e) => setCardholderName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="expirationDate">Expiration Date</Label>
-            <Input
-              type="text"
-              id="expirationDate"
-              placeholder="MM/YY"
-              value={expirationDate}
-              onChange={(e) => setExpirationDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="cvv">CVV</Label>
-            <Input
-              type="text"
-              id="cvv"
-              placeholder="CVV"
-              value={cvv}
-              onChange={(e) => setCvv(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="mt-4">
-            Submit
-          </Button>
-        </form>
+        <div>
+      <Cards
+        number={state.number}
+        expiry={state.expiry}
+        cvc={state.cvc}
+        name={state.name}
+        focused={state.focus}
+      />
+      <form className="m-2">
+        <Input
+          type="number"
+          name="number"
+          placeholder="Card Number"
+          value={state.number}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          className="m-1 p-1"
+        />
+        <Input
+          type="text"
+          name="name"
+          placeholder="Cardholder Name"
+          value={state.name}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          className="m-1 p-1"
+        />
+        <Input
+          type="text"
+          name="expiry"
+          placeholder="Expiration Date"
+          value={state.expiry}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          className="m-1 p-1"
+        />
+        <Input
+          type="number"
+          name="cvc"
+          placeholder="CVV"
+          value={state.cvc}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          className="m-1 p-1"
+        />
+      </form>
+    </div>
       </DialogContent>
     </Dialog>
   );

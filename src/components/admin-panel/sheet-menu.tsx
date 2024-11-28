@@ -1,15 +1,15 @@
-import Link from "next/link";
+import {Link} from "react-router-dom";
 import { MenuIcon, PanelsTopLeft } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Menu } from "@/components/admin-panel/menu";
+import { Button } from "../ui/button";
+import { Menu } from "../admin-panel/menu";
 import {
   Sheet,
   SheetHeader,
   SheetContent,
   SheetTrigger,
   SheetTitle
-} from "@/components/ui/sheet";
+} from "../ui/sheet";
 
 export function SheetMenu() {
   return (
@@ -26,7 +26,7 @@ export function SheetMenu() {
             variant="link"
             asChild
           >
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link to="/dashboard" className="flex items-center gap-2">
               <PanelsTopLeft className="w-6 h-6 mr-1" />
               <SheetTitle className="font-bold text-lg">Brand</SheetTitle>
             </Link>

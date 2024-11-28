@@ -39,10 +39,7 @@ function CardWithForm() {
       });
       localStorage.setItem('username', username);
       localStorage.setItem('token', data.token);
-
-      setTimeout(() => {
         navigate('/dashboard');
-      }, 5000);
     } else {
       alert(data.message);
     }

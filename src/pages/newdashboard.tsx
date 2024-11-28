@@ -11,6 +11,15 @@ import { DialogPrompt3 } from "../components/DialogPrompt3"
 import { DialogPrompt2 } from "../components/DialogPrompt2"
 import { SkeletonCard } from "../components/SkeletonCard"
 import { CategoryChartSkeleton } from "../components/categorySkeleton"
+import { Check } from 'lucide-react'
+import { cn } from "../lib/utils"
+
+interface Step {
+  id: number
+  text: string
+  completed: boolean
+  visible: boolean
+}
 
 interface Spending {
   title: string
@@ -33,7 +42,21 @@ interface BillSpending {
 export default function DashboardPageNew() {
   const [spendings, setSpendings] = useState<Spending[]>([])
   const [billSpendings, setBillSpendings] = useState<BillSpending[]>([])
-  const [username, setUsername] = useState("")
+  const [username, setUsername] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [showFinalModal, setShowFinalModal] = useState(false);
+  const [steps, setSteps] = useState<Step[]>([
+    { id: 1, text: "Fetching everyday transactions", completed: false, visible: false },
+    { id: 2, text: "Analyzing spending habits", completed: false, visible: false },
+    { id: 3, text: "Preparing monthly budget insights", completed: false, visible: false },
+    { id: 4, text: "Setting up bill reminders", completed: false, visible: false },
+    { id: 5, text: "Splitting expenses with friends", completed: false, visible: false },
+    { id: 6, text: "Planning ahead for savings goals", completed: false, visible: false },
+  ])
+  
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [autoProgressStarted, setAutoProgressStarted] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,10 +76,16 @@ export default function DashboardPageNew() {
         console.error(data.message)
       }
     }
+    const user = localStorage.getItem("username")
+    setUsername(user || "")
 
-    const fetchBillData = async () => {
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+     const fetchBillData = async () => {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:5000/bill-form-data", {
+      const response = await fetch("http://localhost:5000/bill-formdata", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -71,17 +100,12 @@ export default function DashboardPageNew() {
         console.error(data.message)
       }
     }
-
-    const user = localStorage.getItem("username")
-    setUsername(user || "")
-
-    fetchData()
-    fetchBillData()
+    fetchBillData();
   }, [])
 
-  const totalSpent = spendings
-    .filter((spending) => spending.selectValue === "spent")
-    .reduce((total, spending) => total + spending.amount, 0)
+  const totalSpent = [...spendings, ...billSpendings]
+    .filter((item) => item.selectValue === "spent")
+    .reduce((total, item) => total + item.amount, 0)
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -92,10 +116,114 @@ export default function DashboardPageNew() {
     })
   }
 
+  const calculateDaysLeftInMonth = () => {
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return (endOfMonth.getDate() - now.getDate());
+  }
+
+  const monthlyBudget = 30000; // Example monthly budget
+  const remainingBudget = monthlyBudget - totalSpent;
+  const daysLeftInMonth = calculateDaysLeftInMonth();
+  const dailyBudget = remainingBudget / daysLeftInMonth;
+
+  useEffect(() => {
+    if (currentStep > 0 && currentStep <= steps.length) {
+      const timer = setTimeout(() => {
+        setSteps(prev => prev.map((step, idx) => ({
+          ...step,
+          visible: idx < currentStep,
+          completed: idx < currentStep - 1
+        })))
+        setIsAnimating(false)
+
+        if (autoProgressStarted && currentStep < steps.length) {
+          setTimeout(() => {
+            setCurrentStep(prev => prev + 1)
+            setIsAnimating(true)
+          }, 4000) // 4-second gap between steps
+        } else if (currentStep === steps.length) {
+          setShowFinalModal(true);
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [currentStep, steps.length, autoProgressStarted])
+
+  const handleStart = () => {
+    if (currentStep === 0 && !isAnimating) {
+      setIsAnimating(true)
+      setCurrentStep(1)
+      setAutoProgressStarted(true)
+    }
+  }
+
+  const handlePlanMonthlyBudget = () => {
+    setShowModal(true);
+    handleStart();
+  }
+
+  const handleCloseFinalModal = () => {
+    setShowFinalModal(false);
+    setShowModal(false);
+    setCurrentStep(0);
+    setSteps(prev => prev.map(step => ({
+      ...step,
+      completed: false,
+      visible: false
+    })));
+  }
+
   const dateToday = formatDate(new Date().toISOString())
 
   return (
-    <div className="bg-gray-100 min-h-screen p-8">
+    <div className="bg-gray-100 min-h-screen p-8 relative">
+      {showModal && (
+        <div className="absolute inset-0 bg-transparent backdrop-blur flex flex-col items-center justify-center p-4 z-50">
+          <div className="relative">
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-cyan-500/20 blur-[100px] rounded-full" />
+            
+            {/* Steps container */}
+            <div className="relative space-y-4">
+              {steps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={cn(
+                    "flex items-center gap-3 transition-all duration-500",
+                    step.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                  )}
+                >
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300",
+                    index === currentStep - 1 ? "bg-[#98ff98] text-black" : "bg-white/20"
+                  )}>
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <span className={cn(
+                    "text-lg transition-colors duration-300",
+                    index === currentStep - 1 ? "text-[#98ff98]" : "text-black/80"
+                  )}>
+                    {step.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {showFinalModal && (
+        <div className="absolute inset-0 bg-transparent backdrop-blur flex flex-col items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4">Here is your monthly plan</h2>
+            <p>Total Spent: ₹{totalSpent}</p>
+            <p>Remaining Budget: ₹{remainingBudget}</p>
+            <p>Days Left in Month: {daysLeftInMonth}</p>
+            <p>Daily Budget: ₹{dailyBudget.toFixed(2)}</p>
+            <Button onClick={handleCloseFinalModal}>Close</Button>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto space-y-8">
         <h1 className="text-4xl font-bold text-gray-900">
           Hello {username} 👋
@@ -112,6 +240,18 @@ export default function DashboardPageNew() {
               <div className="mt-4 flex items-center space-x-2">
                 <span className="text-sm font-medium">Banking:</span>
                 <span className="text-sm text-muted-foreground">₹5,00,000</span>
+              </div>
+              <div className="mt-4 flex items-center space-x-2">
+                <CardTitle className="text-sm font-medium">Monthly Budget</CardTitle>
+                <span className="text-sm text-muted-foreground">₹30,000</span>
+              </div>
+              <div className="mt-4">
+                <button 
+                  className="text-blue-600 underline text-sm"
+                  onClick={handlePlanMonthlyBudget}
+                >
+                  Plan Monthly Budget
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -211,13 +351,13 @@ export default function DashboardPageNew() {
               <CardTitle>Top Spending Categories</CardTitle>
             </CardHeader>
             <CardContent>
-               {spendings.length < 3 ? (
+              {spendings.length < 3 ? (
                 <>
                   <CategoryChartSkeleton />
                   <p className="text-center text-gray-700">Not enough data</p>
                 </>
-              ) : (  
-              <CategoryChart data={spendings} />
+              ) : (
+                <CategoryChart data={spendings} />
               )}
             </CardContent>
           </Card>
@@ -275,4 +415,3 @@ export default function DashboardPageNew() {
     </div>
   )
 }
-

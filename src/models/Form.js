@@ -8,8 +8,8 @@ const formSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   category: { type: String, required: true },
   selectValue: { type: String, required: true },
-}, { collection: 'transactions' });
+});
 
-const Form = mongoose.models.Form || mongoose.model('Form', formSchema);
+const Form = mongoose.models.Form || mongoose.model('Form', formSchema ,'transactions');
 
 export default Form;

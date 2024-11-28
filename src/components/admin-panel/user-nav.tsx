@@ -1,16 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import {Link} from "react-router-dom"
 import { LayoutGrid, LogOut, User } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "../ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   TooltipProvider
-} from "@/components/ui/tooltip";
+} from "../ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +19,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+} from "../ui/dropdown-menu";
 
 export function UserNav() {
   return (
@@ -55,13 +55,13 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem className="hover:cursor-pointer" asChild>
-            <Link href="/dashboard" className="flex items-center">
+            <Link to="/dashboard" className="flex items-center">
               <LayoutGrid className="w-4 h-4 mr-3 text-zinc-500 dark:text-zinc-400" />
               Dashboard
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem className="hover:cursor-pointer" asChild>
-            <Link href="/account" className="flex items-center">
+            <Link to="/account" className="flex items-center">
               <User className="w-4 h-4 mr-3 text-zinc-500 dark:text-zinc-400" />
               Account
             </Link>
