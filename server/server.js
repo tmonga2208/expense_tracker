@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+
+
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -80,10 +82,39 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, 'secret', (err, user) => {
     if (err) return res.sendStatus(403);
-    req.user = user;
+    req.user = { id: user.id }; // Ensure the user ID is attached to req.user
     next();
   });
 };
+
+
+app.post('/update-profile', authenticateToken, async (req, res) => {
+  const { username, email, fullName, bio, location, website, password } = req.body;
+
+  try {
+    const user = await UserInfo.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.username = username || user.username;
+    user.email = email || user.email;
+    user.fullName = fullName || user.fullName;
+    user.bio = bio || user.bio;
+    user.location = location || user.location;
+    user.website = website || user.website;
+
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+    res.status(200).json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating profile' });
+  }
+});
 
 app.post('/submit-form', authenticateToken, async (req, res) => {
   const { title, date, description, amount, category, selectValue } = req.body;
@@ -143,6 +174,27 @@ app.get('/bill-formdata', authenticateToken, async (req, res) => {
     res.status(200).json(forms);
   } catch (error) {
     res.status(400).json({ message: 'Error fetching bill data' });
+  }
+});
+
+app.get('/update-profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await UserInfo.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(400).json({ message: 'Error fetching user data' });
+  }
+});
+
+app.get('/users', authenticateToken, async (req, res) => {
+  try {
+    const users = await UserInfo.find({}, 'username');
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(400).json({ message: 'Error fetching usernames' });
   }
 });
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState ,useEffect } from 'react';
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -19,10 +19,34 @@ export default function UserProfile() {
   };
 
 
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('userDetails');
-    return storedUser ? JSON.parse(storedUser) : defaultUser;
-  });
+  const [user, setUser] = useState(defaultUser);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('No token found. Please log in.');
+        return;
+      }
+      const response = await fetch('http://localhost:5000/user-info', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const othername = localStorage.getItem('username');
 
@@ -51,7 +75,6 @@ export default function UserProfile() {
     if (response.ok) {
       const data = await response.json();
       alert(data.message);
-      localStorage.setItem('userDetails', JSON.stringify(user));
     } else {
       const errorData = await response.json();
       alert(errorData.message);

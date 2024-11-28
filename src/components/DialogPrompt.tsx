@@ -21,7 +21,7 @@ export function DialogPrompt() {
   const [category, setCategory] = useState("");
   const [selectValue, setSelectValue] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async ( e :React.FormEvent ) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
     const response = await fetch("http://localhost:5000/submit-form", {

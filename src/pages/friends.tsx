@@ -1,90 +1,142 @@
-import React, { useEffect, useState } from 'react';
-import AdminPanelLayout from '../components/admin-panel/admin-panel-layout';
-import { Input } from '../components/ui/input';
-import { Search } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { useNavigate } from 'react-router-dom';
+'use client'
 
-function FriendsPage() {
-  const friends = [
-    "John Doe", "Jane Doe", "Alice Doe", "Bob Doe", "Charlie Doe",
-    "David Doe", "Eve Doe", "Frank Doe", "Grace Doe", "Henry Doe"
-  ];
-  const [filteredFriends, setFilteredFriends] = useState(friends);
-  const [search, setSearch] = useState("");
-    const [showResults, setShowResults] = useState(false); 
-    
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    setFilteredFriends(friends.filter(friend => friend.toLowerCase().includes(e.target.value.toLowerCase())));
-  };
+import React, { useState, useEffect } from 'react'
+import AdminPanelLayout from '../components/admin-panel/admin-panel-layout'
+import { Input } from "../components/ui/input"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { UserPlus, User, Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
-  const handleSearchClick = () => {
-    setShowResults(true); 
-  };
+// Define types
+type User = {
+  id: string
+  username: string
+}
 
+export default function FriendsPage() {
+  const [query, setQuery] = useState<string>('')
+  const [searchResults, setSearchResults] = useState<User[]>([])
+  const [friends, setFriends] = useState<User[]>([])
   const navigate = useNavigate();
-  const handleNavigation = () => {
-    navigate(`/history`);
-    };
-    
-  const [addedFriends, setAddedFriends] = useState<string[]>(() => {
-    const storedFriends = localStorage.getItem('addedFriends');
-    return storedFriends ? JSON.parse(storedFriends) : [];
-  });
-    
-    const handleAddFriend = (friend: string) => {
-    if (!addedFriends.includes(friend)) {
-      setAddedFriends([...addedFriends, friend]);
-    }
-    };
-    
-    useEffect(() => {
-    localStorage.setItem('addedFriends', JSON.stringify(addedFriends));
-  }, [addedFriends]);
 
+  const handleNavigate = () => {
+    navigate("/history");
+    
+  }
+
+  // Simulated API call for searching users
+  const searchUsers = async (searchQuery: string): Promise<User[]> => {
+    // In a real application, this would be an API call
+    // For this example, we'll simulate some results
+    await new Promise(resolve => setTimeout(resolve, 300)) // Simulate network delay
+    const mockUsers: User[] = [
+      { id: '1', username: 'Ayush' },
+      { id: '2', username: 'Piyush' },
+      { id: '3', username: 'Arnav' },
+      { id: '4', username: 'Siddhanth' },
+      { id: '5', username: 'Mitali' },
+    ]
+    return mockUsers.filter(user => 
+      user.username.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (query) {
+        const results = await searchUsers(query)
+        setSearchResults(results)
+      } else {
+        setSearchResults([])
+      }
+    }
+
+    fetchUsers()
+  }, [query])
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value)
+  }
+
+  const addFriend = (user: User) => {
+    setFriends(prevFriends => {
+      if (!prevFriends.some(friend => friend.id === user.id)) {
+        return [...prevFriends, user]
+      }
+      return prevFriends
+    })
+    setSearchResults(prevResults => 
+      prevResults.filter(result => result.id !== user.id)
+    )
+  }
 
   return (
     <AdminPanelLayout>
-      <div className='m-4 p-4'>
-        <div className='flex justify-between items-center mb-4'>
+      <div className="container mx-auto py-8 px-8">
+        <h1 className="text-3xl font-bold mb-8">Friend Search</h1>
+        <div className="flex items-center space-x-2 mb-8">
           <Input
-            placeholder='Search People'
-            value={search}
+            type="text"
+            value={query}
             onChange={handleSearch}
+            placeholder="Search for users..."
+            className="flex-grow"
           />
-          <Search
-            className='cursor-pointer p-1'
-            size={24}
-            onClick={handleSearchClick} // Handle search click
-          />
+          <Button variant="outline" size="icon">
+            <Search className="h-4 w-4" />
+            <span className="sr-only">Search</span>
+          </Button>
         </div>
-        {showResults && ( 
-          <div className="bg-white">
-            {filteredFriends.map((friend, index) => (
-              <p key={index} className='flex justify-between p-2'>
-                {friend}
-                    <div>
-                    <span className='m-1'><Button onClick={() => handleAddFriend(friend)}>Add</Button></span>
+        <div className="grid gap-8 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Search Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-4">
+                {searchResults.map(user => (
+                  <li key={user.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <User className="h-5 w-5 text-gray-500" />
+                      <span>{user.username}</span>
                     </div>
-              </p>
-            ))}
-          </div>
-              )}
-              <div className=''>
-                  <h1>Friend List</h1>
-                    <ul className='bg-white rounded-lg shadow-md p-6 md:col-span-2 lg:col-span-1'>
-                        {addedFriends.map((friend, index) => (
-                            <li className='flex justify-between' key={index}>{friend}
-                                <span className='m-2'><Button onClick={handleNavigation}>Details</Button></span>
-                            </li>
-                            
-                        ))}
-                    </ul>
-              </div>
+                    <Button onClick={() => addFriend(user)} size="sm">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </li>
+                ))}
+                {searchResults.length === 0 && (
+                  <li className="text-gray-500">No results found</li>
+                )}
+              </ul>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Added Friends</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-4">
+                {friends.map(friend => (
+                  <li key={friend.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <User className="h-5 w-5 text-gray-500" />
+                      <span>{friend.username}</span>
+                    </div>
+                    <Button size="sm" onClick={handleNavigate}>Details</Button>
+                  </li>
+                ))}
+                {friends.length === 0 && (
+                  <li className="text-gray-500">No friends added yet</li>
+                )}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminPanelLayout>
-  );
+  )
 }
 
-export default FriendsPage;

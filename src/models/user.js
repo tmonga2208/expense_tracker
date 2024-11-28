@@ -10,6 +10,6 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
 }, { collection: 'userinfo' });
 
-const UserInfo = mongoose.models.User || mongoose.model('userinfo', userSchema);
+const UserInfo = mongoose.models.UserInfo || mongoose.model('UserInfo', userSchema);
 
 export default UserInfo;

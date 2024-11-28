@@ -32,7 +32,7 @@ export function DialogPrompt3() {
     setState((prev) => ({ ...prev, focus: evt.target.name }));
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async ( e :React.FormEvent ) => {
     e.preventDefault();
 
     const cardDetails = {
@@ -78,7 +78,7 @@ export function DialogPrompt3() {
         name={state.name}
         focused={state.focus}
       />
-      <form className="m-2">
+      <form className="m-2" onSubmit={handleSubmit}>
         <Input
           type="number"
           name="number"
@@ -115,6 +115,7 @@ export function DialogPrompt3() {
           onFocus={handleInputFocus}
           className="m-1 p-1"
         />
+        <Button type="submit">Submit</Button>
       </form>
     </div>
       </DialogContent>

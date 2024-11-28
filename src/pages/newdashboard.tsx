@@ -13,6 +13,7 @@ import { SkeletonCard } from "../components/SkeletonCard"
 import { CategoryChartSkeleton } from "../components/categorySkeleton"
 import { Check } from 'lucide-react'
 import { cn } from "../lib/utils"
+import { useNavigate } from "react-router-dom"
 
 interface Step {
   id: number
@@ -53,7 +54,7 @@ export default function DashboardPageNew() {
     { id: 5, text: "Splitting expenses with friends", completed: false, visible: false },
     { id: 6, text: "Planning ahead for savings goals", completed: false, visible: false },
   ])
-  
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const [autoProgressStarted, setAutoProgressStarted] = useState(false)
@@ -116,6 +117,10 @@ export default function DashboardPageNew() {
     })
   }
 
+  const handleNavigate = () => {
+    navigate("/viewall")
+  }
+
   const calculateDaysLeftInMonth = () => {
     const now = new Date();
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -175,6 +180,9 @@ export default function DashboardPageNew() {
   }
 
   const dateToday = formatDate(new Date().toISOString())
+
+  // Combine categories from transactions and bills
+  const combinedCategories = [...spendings, ...billSpendings];
 
   return (
     <div className="bg-gray-100 min-h-screen p-8 relative">
@@ -303,7 +311,7 @@ export default function DashboardPageNew() {
                   </div>
                 ))}
               </div>
-              <Button variant="link" className="mt-4 w-full">
+              <Button variant="link" className="mt-4 w-full" onClick={handleNavigate}>
                 View All Transactions
               </Button>
             </CardContent>
@@ -351,13 +359,13 @@ export default function DashboardPageNew() {
               <CardTitle>Top Spending Categories</CardTitle>
             </CardHeader>
             <CardContent>
-              {spendings.length < 3 ? (
+              {combinedCategories.length < 3 ? (
                 <>
                   <CategoryChartSkeleton />
                   <p className="text-center text-gray-700">Not enough data</p>
                 </>
               ) : (
-                <CategoryChart data={spendings} />
+                <CategoryChart data={combinedCategories} />
               )}
             </CardContent>
           </Card>

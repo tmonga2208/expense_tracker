@@ -8,6 +8,7 @@ import FriendsPage from './pages/friends';
 import UserProfile from './pages/userPage';
 import ExpenseDetails from './components/detailspage';
 import ExpenseCategories from './pages/categories';
+import TransactionsPage from './pages/transactionPage';
 
 
 const AppRoutes: React.FC = () => {
@@ -23,6 +24,7 @@ const AppRoutes: React.FC = () => {
         <Route path='/account' element={<UserProfile />} />
         <Route path='/history' element={<ExpenseDetails />} />
         <Route path='/categories' element={<ExpenseCategories />} />
+        <Route path='/viewall' element={<TransactionsPage/>}/>
       </Routes>
     </BrowserRouter>
   );
