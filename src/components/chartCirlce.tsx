@@ -1,4 +1,3 @@
-// src/components/chartCirlce.tsx
 "use client"
 
 import * as React from "react"

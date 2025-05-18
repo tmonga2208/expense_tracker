@@ -62,8 +62,10 @@ export function DialogPrompt3() {
 
   return (
     <Dialog>
-      <DialogTrigger>
-        <Button>Add</Button>
+      <DialogTrigger asChild>
+        <div>
+          <Button>Add</Button>
+        </div>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

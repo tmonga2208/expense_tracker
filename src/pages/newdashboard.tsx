@@ -7,13 +7,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar"
 import { SpendingChart } from "./comps/spending-chart"
 import { CategoryChart } from "./comps/category-chart"
 import { DialogPrompt } from "../components/DialogPrompt"
-import { DialogPrompt3 } from "../components/DialogPrompt3"
 import { DialogPrompt2 } from "../components/DialogPrompt2"
 import { SkeletonCard } from "../components/SkeletonCard"
 import { CategoryChartSkeleton } from "../components/categorySkeleton"
 import { Check } from 'lucide-react'
 import { cn } from "../lib/utils"
 import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../components/ui/dialog"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
+import { Settings } from "lucide-react"
 
 interface Step {
   id: number
@@ -40,6 +50,44 @@ interface BillSpending {
   description: string
 }
 
+interface Friend {
+  _id: string;
+  username: string;
+}
+
+interface FriendBalance {
+  friend: Friend;
+  totalBalance: number;
+  youOwe: number;
+  owedToYou: number;
+}
+
+interface Expense {
+  _id: string;
+  paidBy: 'you' | 'friend';
+  lentAmount: number;
+}
+
+interface UserSettings {
+  monthlyBudget: number;
+  savingsGoals: {
+    _id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+    targetDate: string;
+  }[];
+  banking: {
+    totalBalance: number;
+    accounts: {
+      _id: string;
+      name: string;
+      balance: number;
+      type: string;
+    }[];
+  };
+}
+
 export default function DashboardPageNew() {
   const [spendings, setSpendings] = useState<Spending[]>([])
   const [billSpendings, setBillSpendings] = useState<BillSpending[]>([])
@@ -56,8 +104,23 @@ export default function DashboardPageNew() {
   ])
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [autoProgressStarted, setAutoProgressStarted] = useState(false)
+  const [friendBalances, setFriendBalances] = useState<FriendBalance[]>([])
+  const [totalBalance, setTotalBalance] = useState(0)
+  const [totalOwed, setTotalOwed] = useState(0)
+  const [totalOwedToYou, setTotalOwedToYou] = useState(0)
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [newMonthlyBudget, setNewMonthlyBudget] = useState('');
+  const [newSavingsGoal, setNewSavingsGoal] = useState({
+    name: '',
+    targetAmount: '',
+    targetDate: ''
+  });
+  const [newBankAccount, setNewBankAccount] = useState({
+    name: '',
+    balance: '',
+    type: 'savings'
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,6 +167,88 @@ export default function DashboardPageNew() {
     fetchBillData();
   }, [])
 
+  useEffect(() => {
+    const fetchFriendsAndBalances = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        
+        if (!token || !userId) return;
+
+        // Fetch friends
+        const friendsResponse = await axios.get(`http://localhost:5000/friends/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Fetch expenses for each friend and calculate balances
+        const balances = await Promise.all(
+          friendsResponse.data.map(async (friend: Friend) => {
+            const expensesResponse = await axios.get(`http://localhost:5000/expenses/${userId}/${friend._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const expenses = expensesResponse.data as Expense[];
+            let youOwe = 0;
+            let owedToYou = 0;
+
+            expenses.forEach((expense) => {
+              if (expense.paidBy === 'you') {
+                owedToYou += expense.lentAmount;
+              } else {
+                youOwe += expense.lentAmount;
+              }
+            });
+
+            const totalBalance = owedToYou - youOwe;
+
+            return {
+              friend,
+              totalBalance,
+              youOwe,
+              owedToYou
+            };
+          })
+        );
+
+        setFriendBalances(balances);
+
+        // Calculate totals
+        const total = balances.reduce((sum, balance) => sum + balance.totalBalance, 0);
+        const totalOwed = balances.reduce((sum, balance) => sum + balance.youOwe, 0);
+        const totalOwedToYou = balances.reduce((sum, balance) => sum + balance.owedToYou, 0);
+
+        setTotalBalance(total);
+        setTotalOwed(totalOwed);
+        setTotalOwedToYou(totalOwedToYou);
+      } catch (error) {
+        console.error('Error fetching friends and balances:', error);
+      }
+    };
+
+    fetchFriendsAndBalances();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        
+        if (!token || !userId) return;
+
+        const response = await axios.get(`http://localhost:5000/settings/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        setUserSettings(response.data);
+      } catch (error) {
+        console.error('Error fetching user settings:', error);
+      }
+    };
+
+    fetchUserSettings();
+  }, []);
+
   const totalSpent = [...spendings, ...billSpendings]
     .filter((item) => item.selectValue === "spent")
     .reduce((total, item) => total + item.amount, 0)
@@ -140,33 +285,14 @@ export default function DashboardPageNew() {
           visible: idx < currentStep,
           completed: idx < currentStep - 1
         })))
-        setIsAnimating(false)
 
-        if (autoProgressStarted && currentStep < steps.length) {
-          setTimeout(() => {
-            setCurrentStep(prev => prev + 1)
-            setIsAnimating(true)
-          }, 4000) // 4-second gap between steps
-        } else if (currentStep === steps.length) {
+        if (currentStep === steps.length) {
           setShowFinalModal(true);
         }
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [currentStep, steps.length, autoProgressStarted])
-
-  const handleStart = () => {
-    if (currentStep === 0 && !isAnimating) {
-      setIsAnimating(true)
-      setCurrentStep(1)
-      setAutoProgressStarted(true)
-    }
-  }
-
-  const handlePlanMonthlyBudget = () => {
-    setShowModal(true);
-    handleStart();
-  }
+  }, [currentStep, steps.length])
 
   const handleCloseFinalModal = () => {
     setShowFinalModal(false);
@@ -183,6 +309,74 @@ export default function DashboardPageNew() {
 
   // Combine categories from transactions and bills
   const combinedCategories = [...spendings, ...billSpendings];
+
+  const handleUpdateMonthlyBudget = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) return;
+
+      await axios.put(`http://localhost:5000/settings/${userId}`, {
+        monthlyBudget: Number(newMonthlyBudget)
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setUserSettings(prev => prev ? {
+        ...prev,
+        monthlyBudget: Number(newMonthlyBudget)
+      } : null);
+      setShowSettingsDialog(false);
+    } catch (error) {
+      console.error('Error updating monthly budget:', error);
+    }
+  };
+
+  const handleAddSavingsGoal = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) return;
+
+      const response = await axios.post(`http://localhost:5000/settings/${userId}/savings`, {
+        name: newSavingsGoal.name,
+        targetAmount: Number(newSavingsGoal.targetAmount),
+        currentAmount: 0,
+        targetDate: newSavingsGoal.targetDate
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setUserSettings(response.data);
+      setNewSavingsGoal({ name: '', targetAmount: '', targetDate: '' });
+    } catch (error) {
+      console.error('Error adding savings goal:', error);
+    }
+  };
+
+  const handleAddBankAccount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) return;
+
+      const response = await axios.post(`http://localhost:5000/settings/${userId}/banking`, {
+        name: newBankAccount.name,
+        balance: Number(newBankAccount.balance),
+        type: newBankAccount.type
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setUserSettings(response.data);
+      setNewBankAccount({ name: '', balance: '', type: 'savings' });
+    } catch (error) {
+      console.error('Error adding bank account:', error);
+    }
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen p-8 relative">
@@ -232,6 +426,89 @@ export default function DashboardPageNew() {
           </div>
         </div>
       )}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-[525px] overflow-y-auto max-h-[60vh]">
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription>
+              Manage your monthly budget, savings goals, and bank accounts.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label>Monthly Budget</Label>
+              <Input
+                type="number"
+                value={newMonthlyBudget}
+                onChange={(e) => setNewMonthlyBudget(e.target.value)}
+                placeholder="Enter monthly budget"
+              />
+              <Button onClick={handleUpdateMonthlyBudget} className="mt-2">
+                Update Budget
+              </Button>
+            </div>
+
+            <div>
+              <Label>Add Savings Goal</Label>
+              <Input
+                type="text"
+                value={newSavingsGoal.name}
+                onChange={(e) => setNewSavingsGoal(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Goal name"
+                className="mb-2"
+              />
+              <Input
+                type="number"
+                value={newSavingsGoal.targetAmount}
+                onChange={(e) => setNewSavingsGoal(prev => ({ ...prev, targetAmount: e.target.value }))}
+                placeholder="Target amount"
+                className="mb-2"
+              />
+              <Input
+                type="date"
+                value={newSavingsGoal.targetDate}
+                onChange={(e) => setNewSavingsGoal(prev => ({ ...prev, targetDate: e.target.value }))}
+                className="mb-2"
+              />
+              <Button onClick={handleAddSavingsGoal} className="mt-2">
+                Add Goal
+              </Button>
+            </div>
+
+            <div>
+              <Label>Add Bank Account</Label>
+              <Input
+                type="text"
+                value={newBankAccount.name}
+                onChange={(e) => setNewBankAccount(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Account name"
+                className="mb-2"
+              />
+              <Input
+                type="number"
+                value={newBankAccount.balance}
+                onChange={(e) => setNewBankAccount(prev => ({ ...prev, balance: e.target.value }))}
+                placeholder="Initial balance"
+                className="mb-2"
+              />
+              <select
+                value={newBankAccount.type}
+                onChange={(e) => setNewBankAccount(prev => ({ ...prev, type: e.target.value }))}
+                className="w-full p-2 border rounded-md mb-2"
+                aria-label="Account type"
+              >
+                <option value="savings">Savings</option>
+                <option value="checking">Checking</option>
+                <option value="investment">Investment</option>
+              </select>
+              <Button onClick={handleAddBankAccount} className="mt-2">
+                Add Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="max-w-7xl mx-auto space-y-8">
         <h1 className="text-4xl font-bold text-gray-900">
           Hello {username} 👋
@@ -239,27 +516,60 @@ export default function DashboardPageNew() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Accounts</CardTitle>
-              <DialogPrompt3 />
+              <div className="flex items-center space-x-2">
+                <CardTitle className="text-sm font-medium">Accounts</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowSettingsDialog(true)}
+                  className="h-8 w-8"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹5,00,000</div>
+              <div className="text-2xl font-bold">
+                ₹{userSettings?.banking.totalBalance.toLocaleString() || 0}
+              </div>
               <p className="text-xs text-muted-foreground">Net Worth</p>
-              <div className="mt-4 flex items-center space-x-2">
-                <span className="text-sm font-medium">Banking:</span>
-                <span className="text-sm text-muted-foreground">₹5,00,000</span>
-              </div>
-              <div className="mt-4 flex items-center space-x-2">
-                <CardTitle className="text-sm font-medium">Monthly Budget</CardTitle>
-                <span className="text-sm text-muted-foreground">₹30,000</span>
-              </div>
+              
+              {userSettings?.banking.accounts.map((account) => (
+                <div key={account._id} className="mt-4 flex items-center space-x-2">
+                  <span className="text-sm font-medium">{account.name}:</span>
+                  <span className="text-sm text-muted-foreground">
+                    ₹{account.balance.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+
               <div className="mt-4">
-                <button 
-                  className="text-blue-600 underline text-sm"
-                  onClick={handlePlanMonthlyBudget}
-                >
-                  Plan Monthly Budget
-                </button>
+                <CardTitle className="text-sm font-medium">Monthly Budget</CardTitle>
+                <span className="text-sm text-muted-foreground">
+                  ₹{userSettings?.monthlyBudget.toLocaleString() || 0}
+                </span>
+              </div>
+
+              <div className="mt-4">
+                <CardTitle className="text-sm font-medium">Savings Goals</CardTitle>
+                {userSettings?.savingsGoals.map((goal) => (
+                  <div key={goal._id} className="mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">{goal.name}</span>
+                      <span className="text-sm">
+                        ₹{goal.currentAmount} / ₹{goal.targetAmount}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{
+                          width: `${(goal.currentAmount / goal.targetAmount) * 100}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -377,43 +687,44 @@ export default function DashboardPageNew() {
               <div className="flex justify-between mb-4">
                 <div>
                   <p className="text-sm font-medium">Total Balance</p>
-                  <p className="text-2xl font-bold text-red-600">-₹100</p>
+                  <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {totalBalance >= 0 ? '+' : ''}₹{Math.abs(totalBalance)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">You Owe</p>
-                  <p className="text-2xl font-bold text-red-600">-₹600</p>
+                  <p className="text-2xl font-bold text-red-600">-₹{totalOwed}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">You are Owed</p>
-                  <p className="text-2xl font-bold text-green-600">₹500</p>
+                  <p className="text-2xl font-bold text-green-600">₹{totalOwedToYou}</p>
                 </div>
               </div>
-              <div className="space-y-4">
-                {[
-                  { name: "Ayush", amount: 200, color: "text-green-600" },
-                  { name: "Arnav", amount: -500, color: "text-red-600" },
-                  { name: "Piyush", amount: 300, color: "text-green-600" },
-                  { name: "Siddhanth", amount: -100, color: "text-red-600" },
-                ].map((friend, index) => (
-                  <div key={index} className="flex items-center">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={`/avatars/${friend.name.toLowerCase()}.png`} alt={friend.name} />
-                      <AvatarFallback>{friend.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="ml-4 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {friend.name}
-                      </p>
-                    </div>
-                    <div className="ml-auto font-medium">
-                      <span className={friend.color}>
-                        {friend.amount > 0 ? "+" : ""}₹{Math.abs(friend.amount)}
-                      </span>
-                    </div>
+              
+              {friendBalances.map((balance) => (
+                <div key={balance.friend._id} className="flex items-center mb-4">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={`/avatars/${balance.friend.username.toLowerCase()}.png`} alt={balance.friend.username} />
+                    <AvatarFallback>{balance.friend.username[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="ml-4 space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {balance.friend.username}
+                    </p>
                   </div>
-                ))}
-              </div>
-              <Button variant="link" className="mt-4 w-full">
+                  <div className="ml-auto font-medium">
+                    <span className={balance.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {balance.totalBalance >= 0 ? '+' : ''}₹{Math.abs(balance.totalBalance)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              <Button 
+                variant="link" 
+                className="mt-4 w-full"
+                onClick={() => navigate('/friends')}
+              >
                 See More Friends
               </Button>
             </CardContent>

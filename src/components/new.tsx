@@ -14,14 +14,16 @@ import { FaGoogle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "../hooks/use-toast";
+import { useSignIn } from '@clerk/clerk-react';
 
 function CardWithForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn } = useSignIn();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e : React.FormEvent) => {
     e.preventDefault();
     const response = await fetch('http://localhost:5000/login', {
       method: 'POST',
@@ -39,14 +41,31 @@ function CardWithForm() {
       });
       localStorage.setItem('username', username);
       localStorage.setItem('token', data.token);
-        navigate('/dashboard');
+      localStorage.setItem('userId', data.userId);
+      navigate('/dashboard');
     } else {
       alert(data.message);
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:5000/auth/google';
+  const handleGoogleAuth = async () => {
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_google',
+      });
+    } catch (error) {
+      console.error('Google authentication failed:', error);
+    }
+  };
+
+  const handleGithubAuth = async () => {
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_github',
+      });
+    } catch (error) {
+      console.error('GitHub authentication failed:', error);
+    }
   };
 
   return (
@@ -87,8 +106,8 @@ function CardWithForm() {
             <p className="text-zinc-500">Or Continue With</p>
           </div>
           <div className="w-full flex justify-around">
-            <Button className="px-8 py-3 m-2"><Github />Github</Button>
-            <Button className="px-8 py-3 m-2" onClick={handleGoogleLogin}><FaGoogle /> Google</Button>
+            <Button className="px-8 py-3 m-2" onClick={handleGithubAuth}><Github />Github</Button>
+            <Button className="px-8 py-3 m-2" onClick={handleGoogleAuth}><FaGoogle /> Google</Button>
           </div>
         </div>
       </CardFooter>

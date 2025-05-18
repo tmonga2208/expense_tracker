@@ -7,8 +7,14 @@ import dotenv from 'dotenv';
 import Form from '../src/models/Form.js';
 import BillForm from '../src/models/BillForm.js';
 import UserInfo from '../src/models/user.js';
+import User from './models/User.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import friendsRouter from './routes/friends.js';
+import splitBillsRouter from './routes/splitBills.js';
+import expensesRouter from './routes/expenses.js';
+import settingsRouter from './routes/settings.js';
+import categoriesRouter from './routes/categories.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,25 +39,20 @@ mongoose.connect(MONGO_URI, {
   console.error('Error connecting to MongoDB:', error.message);
 });
 
-const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
-});
-
-const User = mongoose.model('User', userSchema);
-
-
-
 app.post('/signup', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, email } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = new User({ username, password: hashedPassword });
-
+  const user = new User({ 
+    username, 
+    password: hashedPassword,
+    email: email || undefined // Make email optional
+  });
   try {
     await user.save();
     res.status(201).json({ message: 'User created' });
   } catch (error) {
-    res.status(400).json({ message: 'Error creating user' });
+    console.error('Error creating user:', error);
+    res.status(400).json({ message: 'Error creating user: ' + error.message });
   }
 });
 
@@ -70,7 +71,11 @@ app.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign({ id: user._id }, 'secret', { expiresIn: '1h' });
-  res.json({ token });
+  res.json({ 
+    token,
+    userId: user._id,
+    username: user.username 
+  });
 });
 
 // Middleware to authenticate and extract user ID from token
@@ -181,7 +186,16 @@ app.get('/update-profile', authenticateToken, async (req, res) => {
   try {
     const user = await UserInfo.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      const NewUser = await User.create(
+        { username: user.username || 'johndoe', 
+          email: user.email || 'johndoe@gmail.com', 
+          fullName: user.fullName || 'johndoe@gmail.com', 
+          bio: user.bio || 'Entusiastic',
+          location: user.location || 'Nigeria', 
+          website: user.website || 'https://johndoe.com',
+          password: user.password }); 
+      await NewUser.save();
+      user = NewUser;
     }
     res.status(200).json(user);
   } catch (error) {
@@ -201,6 +215,21 @@ app.get('/users', authenticateToken, async (req, res) => {
 app.post('/logout', (req, res) => {
   res.status(200).json({ message: 'Logged out successfully' });
 });
+
+// Add friends routes
+app.use('/friends', authenticateToken, friendsRouter);
+
+// Add split bills routes
+app.use('/split-bills', authenticateToken, splitBillsRouter);
+
+// Add expenses routes
+app.use('/expenses', authenticateToken, expensesRouter);
+
+// Add settings routes
+app.use('/settings', authenticateToken, settingsRouter);
+
+// Add categories routes
+app.use('/categories', authenticateToken, categoriesRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);

@@ -12,6 +12,7 @@ import TransactionsPage from './pages/transactionPage';
 
 
 const AppRoutes: React.FC = () => {
+  
   return (
     <BrowserRouter>
           <Routes>
@@ -22,7 +23,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/signup" element={<SignUpPage />} />  
         <Route path='/friends' element={<FriendsPage />} />
         <Route path='/account' element={<UserProfile />} />
-        <Route path='/history' element={<ExpenseDetails />} />
+        <Route path='/history/:username' element={<ExpenseDetails />} />
         <Route path='/categories' element={<ExpenseCategories />} />
         <Route path='/viewall' element={<TransactionsPage/>}/>
       </Routes>

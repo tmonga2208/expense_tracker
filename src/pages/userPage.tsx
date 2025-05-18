@@ -15,7 +15,8 @@ export default function UserProfile() {
     bio: 'Enthusiastic developer and tech lover',
     location: 'San Francisco, CA',
     website: 'https://johndoe.dev',
-    password: '********'
+    password: '********',
+    avatarImg: "https://placehold.co/400"
   };
 
 
@@ -28,7 +29,7 @@ export default function UserProfile() {
         alert('No token found. Please log in.');
         return;
       }
-      const response = await fetch('http://localhost:5000/user-info', {
+      const response = await fetch('http://localhost:5000/update-profile', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -81,12 +82,35 @@ export default function UserProfile() {
     }
   };
 
+const handleUserImg = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUser({ ...user, avatarImg: reader.result as string });
+      };
+      reader.readAsDataURL(event.target.files[0]);
+    }
+  };
+
   return (
     <AdminPanelLayout>
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader className="flex flex-col items-center space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
           <Avatar className="w-24 h-24">
-            <AvatarImage src="/placeholder.svg?height=48&width=48" alt={user.username} />
+            <AvatarImage src={user.avatarImg} alt={user.username} />
+            <input
+              title="new"
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handleUserImg}
+            />
+            <Button
+              className="absolute inset-0 m-auto w-8 h-8 opacity-0 hover:opacity-1 bg-transparent rounded-full flex items-center justify-center"
+              onClick={() => document.querySelector('input[type="file"]')?.click()}
+            >
+              +
+            </Button>
             <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="text-center sm:text-left">

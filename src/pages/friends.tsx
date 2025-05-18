@@ -7,68 +7,173 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { UserPlus, User, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import axios, { AxiosError } from 'axios'
+import { ToastProvider } from "../components/ui/toast-context"
+import { useToast } from "../components/ui/use-toast"
 
 // Define types
 type User = {
-  id: string
+  _id: string
   username: string
 }
 
-export default function FriendsPage() {
+function FriendsPageContent() {
   const [query, setQuery] = useState<string>('')
   const [searchResults, setSearchResults] = useState<User[]>([])
   const [friends, setFriends] = useState<User[]>([])
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleNavigate = () => {
-    navigate("/history");
-    
+    navigate(`/history/${friends[0].username}`);
   }
 
-  // Simulated API call for searching users
+  // Fetch user's friends
+  const fetchFriends = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to view your friends",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.get(`http://localhost:5000/friends/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setFriends(response.data);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch friends. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Search users
   const searchUsers = async (searchQuery: string): Promise<User[]> => {
-    // In a real application, this would be an API call
-    // For this example, we'll simulate some results
-    await new Promise(resolve => setTimeout(resolve, 300)) // Simulate network delay
-    const mockUsers: User[] = [
-      { id: '1', username: 'Ayush' },
-      { id: '2', username: 'Piyush' },
-      { id: '3', username: 'Arnav' },
-      { id: '4', username: 'Siddhanth' },
-      { id: '5', username: 'Mitali' },
-    ]
-    return mockUsers.filter(user => 
-      user.username.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to search for users",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return [];
+      }
+
+      const response = await axios.get(`http://localhost:5000/friends/search?query=${searchQuery}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error searching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search users. Please try again.",
+        variant: "destructive",
+      });
+      return [];
+    }
   }
+
+  useEffect(() => {
+    fetchFriends();
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
       if (query) {
-        const results = await searchUsers(query)
-        setSearchResults(results)
+        setLoading(true);
+        const results = await searchUsers(query);
+        setSearchResults(results);
+        setLoading(false);
       } else {
-        setSearchResults([])
+        setSearchResults([]);
       }
     }
 
-    fetchUsers()
-  }, [query])
+    fetchUsers();
+  }, [query]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value)
+    setQuery(event.target.value);
   }
 
-  const addFriend = (user: User) => {
-    setFriends(prevFriends => {
-      if (!prevFriends.some(friend => friend.id === user.id)) {
-        return [...prevFriends, user]
+  const addFriend = async (user: User) => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      
+      if (!token || !userId) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to add friends",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
       }
-      return prevFriends
-    })
-    setSearchResults(prevResults => 
-      prevResults.filter(result => result.id !== user.id)
-    )
+
+      const response = await axios.post(
+        `http://localhost:5000/friends/${userId}/add/${user._id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.message === 'Friend added successfully') {
+        toast({
+          title: "Success",
+          description: `Added ${user.username} as a friend`,
+        });
+      } else if (response.data.message === 'Already friends with this user') {
+        toast({
+          title: "Info",
+          description: `${user.username} is already your friend.`,
+        });
+      }
+      // Always refresh the friends list
+      fetchFriends();
+
+    } catch (error: unknown) {
+      const isAxiosError = (err: unknown): err is AxiosError<{ message: string }> => {
+        return (
+          typeof err === 'object' &&
+          err !== null &&
+          'isAxiosError' in err &&
+          (err as AxiosError).isAxiosError === true
+        );
+      };
+      if (isAxiosError(error) && error.response?.data?.message === 'Already friends with this user') {
+        toast({
+          title: "Info",
+          description: `${user.username} is already your friend.`,
+        });
+        fetchFriends();
+      } else {
+        console.error('Error adding friend:', isAxiosError(error) ? error.response?.data : error);
+        toast({
+          title: "Error",
+          description: isAxiosError(error) ? error.response?.data?.message : "Failed to add friend. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
   }
 
   return (
@@ -95,19 +200,23 @@ export default function FriendsPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
-                {searchResults.map(user => (
-                  <li key={user.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-5 w-5 text-gray-500" />
-                      <span>{user.username}</span>
-                    </div>
-                    <Button onClick={() => addFriend(user)} size="sm">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
-                  </li>
-                ))}
-                {searchResults.length === 0 && (
+                {loading ? (
+                  <li className="text-gray-500">Searching...</li>
+                ) : (
+                  searchResults.map(user => (
+                    <li key={user._id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <User className="h-5 w-5 text-gray-500" />
+                        <span>{user.username}</span>
+                      </div>
+                      <Button onClick={() => addFriend(user)} size="sm">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add
+                      </Button>
+                    </li>
+                  ))
+                )}
+                {!loading && searchResults.length === 0 && (
                   <li className="text-gray-500">No results found</li>
                 )}
               </ul>
@@ -120,7 +229,7 @@ export default function FriendsPage() {
             <CardContent>
               <ul className="space-y-4">
                 {friends.map(friend => (
-                  <li key={friend.id} className="flex items-center justify-between">
+                  <li key={friend._id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <User className="h-5 w-5 text-gray-500" />
                       <span>{friend.username}</span>
@@ -138,5 +247,13 @@ export default function FriendsPage() {
       </div>
     </AdminPanelLayout>
   )
+}
+
+export default function FriendsPage() {
+  return (
+    <ToastProvider>
+      <FriendsPageContent />
+    </ToastProvider>
+  );
 }
 
