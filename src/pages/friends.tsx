@@ -25,8 +25,8 @@ function FriendsPageContent() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleNavigate = () => {
-    navigate(`/history/${friends[0].username}`);
+  const handleNavigate = (friend: User) => {
+    navigate(`/history/${friend.username}`);
   }
 
   // Fetch user's friends
@@ -169,7 +169,7 @@ function FriendsPageContent() {
         console.error('Error adding friend:', isAxiosError(error) ? error.response?.data : error);
         toast({
           title: "Error",
-          description: isAxiosError(error) ? error.response?.data?.message : "Failed to add friend. Please try again.",
+          description: isAxiosError(error) ? (error.response?.data?.message ?? "Failed to add friend. Please try again.") : "Failed to add friend. Please try again.",
           variant: "destructive",
         });
       }
@@ -234,7 +234,7 @@ function FriendsPageContent() {
                       <User className="h-5 w-5 text-gray-500" />
                       <span>{friend.username}</span>
                     </div>
-                    <Button size="sm" onClick={handleNavigate}>Details</Button>
+                    <Button size="sm" onClick={() => handleNavigate(friend)}>Details</Button>
                   </li>
                 ))}
                 {friends.length === 0 && (
